@@ -51,6 +51,21 @@ Usa un buzzer **activo** (el que suena solo con darle tensión, 3,3 V).
 
 Sonidos: 3 pitidos cortos cada 45 s mientras haya un caso extremo (comida o diversión <10 o >90) y un pitido largo al morir. Pon `SOUND_ON = false` para silenciarlo.
 
+## WiFi y hora real
+
+Al principio de `tamagotchi.ino` cambia estos dos valores por los de **tu** WiFi (debe ser de 2,4 GHz):
+
+```cpp
+const char* WIFI_SSID = "TU_WIFI";
+const char* WIFI_PASS = "TU_CONTRASENA";
+```
+
+- Al encender se conecta, pide la hora por internet (NTP) y apaga el WiFi. Vuelve a sincronizar cada 6 h.
+- **Zona horaria:** se detecta por internet (`AUTO_TIMEZONE = true`). Si falla, usa España peninsular (`TZ_FALLBACK`), con cambio de horario verano/invierno.
+- Con la hora real aparece un **reloj** arriba a la izquierda y el fondo pasa a noche.
+- **Sin WiFi configurado** funciona como antes, sin ciclo día/noche.
+- ⚠️ No subas a GitHub el archivo con tu contraseña real.
+
 ## Instalar y programar (Arduino IDE)
 
 1. Instala el soporte ESP32: *Archivo → Preferencias → URLs adicionales* →
@@ -67,8 +82,10 @@ Si la pantalla muestra colores raros o una franja de ruido: en `setup()` cambia 
 - **Botón 1:** pone una ración en el plato (la mascota se la come sola).
 - **Botón 2:** jugar.
 - Entre pulsaciones del mismo botón hay **1 minuto** de espera (sale "Espera...").
-- **Mantener los dos botones >1 s:** muestra los valores internos (para el monitor / depurar).
-- **Mantener los dos botones 5 s:** borra la mascota y empieza otra.
+- De noche, si pulsas **Jugar** la despiertas: se enfada y pierde descanso. La comida sí puedes dejársela; se la comerá al despertar.
+- **Mantener los dos botones >1 s:** muestra los valores internos y la hora (para el monitor / depurar).
+- **Mantener los dos botones 10 s:** borra la mascota y empieza otra (`RESET_HOLD_MS` en el código).
+- Al comer dice "¡Qué rico!" y al jugar "¡Qué divertido!".
 
 ## Reglas del juego
 
@@ -76,7 +93,8 @@ Si la pantalla muestra colores raros o una franja de ruido: en `setup()` cambia 
 |---|---|---|
 | Comida | 0 (desnutrido) – 100 (sobrealimentado) | Ideal ≈ 4 raciones/día (valor 50). Se calcula con la media de las últimas ~24 h. Fuera de 35–65 baja el trato. **≤5 durante 1 h = muere de hambre. 100 = muere de empacho.** |
 | Diversión | 0 – 100 | Baja 3 puntos/hora. Cada partida suma `5 + 2·racha` (la racha sube al jugar seguido y se pierde con el tiempo). **0 durante 1 h = muere de pena. 100 = muere de sobreexcitación.** Ideal 40–70. |
-| Trato (oculto) | 0 – 100 | Se acerca despacio (≈2 días) a la media de lo bien que está comida y diversión. |
+| Descanso | 0 – 100 | Solo con hora real. Duerme de **22:00 a 07:00**: sube 12/h durmiendo y baja 5/h despierta. Mientras duerme la diversión baja 4 veces más despacio, no come y el buzzer calla. |
+| Trato (oculto) | 0 – 100 | Se acerca despacio (≈2 días) a la media de comida (40 %), diversión (40 %) y descanso (20 %). Sin hora real: 50 % comida y 50 % diversión. |
 | Edad | 0 – 17 días base | Con trato 100 envejece a ×0,6 (≈28 días de vida); con trato 0 a ×1,4 (≈12 días). Con trato medio ≈ 17 días. |
 
 Etapas (en días base): cachorro 0–3 · joven 3–8 · adulto 8–14 · mayor 14–17 → muere de vejez.
@@ -87,7 +105,8 @@ En el código, `TIME_SCALE = 1.0f`. Ponlo a `3600.0f` (1 hora por segundo) para 
 
 ## Limitaciones conocidas
 
-- Sin batería de reloj (RTC): **el tiempo con el aparato apagado no cuenta**; la mascota "se congela". El estado se guarda cada 5 min en la flash.
+- **El tiempo apagado sí cuenta** (si hay WiFi al volver a encenderlo): al conectar y saber la hora, simula lo ocurrido desde el último guardado, noches incluidas. Un fin de semana apagado se nota; una semana puede ser fatal. Sin WiFi al arrancar, el tiempo apagado no se puede medir y se aplica cuando consiga la hora.
+- El estado se guarda cada 5 min en la flash; en un apagón se pierden como mucho esos 5 min de interacción.
 - Para llevarlo encima añade una batería LiPo + módulo de carga TP4056.
 
 ## Ideas para ampliar
